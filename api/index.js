@@ -178,21 +178,36 @@ async function initDb() {
             id SERIAL PRIMARY KEY,
             recipient_uid VARCHAR(255) REFERENCES users(uid),
             message TEXT,
-            related_id INTEGER,
+            related_id VARCHAR(255),
             type VARCHAR(50),
             is_read BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        `);
 
-        CREATE TABLE IF NOT EXISTS messages (
-            id SERIAL PRIMARY KEY,
-            sender_uid VARCHAR(255) REFERENCES users(uid),
-            recipient_uid VARCHAR(255) REFERENCES users(uid),
-            content TEXT,
-            is_read BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
+            // Migration: Change related_id to VARCHAR if it is INTEGER
+            // We do this by checking the data type in information_schema
+            const checkColumn = await client.query(`
+            SELECT data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'notifications' AND column_name = 'related_id'
+                `);
+
+            if (checkColumn.rows.length > 0 && checkColumn.rows[0].data_type === 'integer') {
+                console.log('Migrating notifications.related_id from INTEGER to VARCHAR...');
+                await client.query('ALTER TABLE notifications ALTER COLUMN related_id TYPE VARCHAR(255)');
+            }
+
+            await client.query(`
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                sender_uid VARCHAR(255) REFERENCES users(uid),
+                recipient_uid VARCHAR(255) REFERENCES users(uid),
+                content TEXT,
+                is_read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            `);
             console.log('Database schema initialized');
         } finally {
             client.release();
@@ -239,9 +254,9 @@ app.post('/api/auth/initiate-signup', async (req, res) => {
         const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         await pool.query(
-            `INSERT INTO verification_tokens (email, token, expires_at) 
-             VALUES ($1, $2, $3) 
-             ON CONFLICT (email) DO UPDATE 
+            `INSERT INTO verification_tokens(email, token, expires_at)
+            VALUES($1, $2, $3) 
+             ON CONFLICT(email) DO UPDATE 
              SET token = EXCLUDED.token, expires_at = EXCLUDED.expires_at`,
             [email, token, expiresAt]
         );
