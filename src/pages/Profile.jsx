@@ -114,12 +114,13 @@ export default function Profile() {
     const handleSave = async () => {
         setSaving(true);
         try {
+            // Fix: Use camelCase keys to match backend expectation
             const updatedData = {
-                display_name: formData.displayName,
+                displayName: formData.displayName,
                 bio: formData.bio,
                 batch: formData.batch,
                 expertise: formData.expertise.split(",").map(s => s.trim()).filter(Boolean),
-                learning_goals: formData.learningGoals.split(",").map(s => s.trim()).filter(Boolean),
+                learningGoals: formData.learningGoals.split(",").map(s => s.trim()).filter(Boolean),
                 qualifications: formData.qualifications.split(",").map(s => s.trim()).filter(Boolean)
             };
 
@@ -132,7 +133,7 @@ export default function Profile() {
                 bio: formData.bio,
                 batch: formData.batch,
                 expertise: updatedData.expertise,
-                learningGoals: updatedData.learning_goals,
+                learningGoals: updatedData.learningGoals,
                 qualifications: updatedData.qualifications
             }));
 
@@ -172,6 +173,10 @@ export default function Profile() {
     };
 
     const handleFollow = async () => {
+        if (!currentUser) {
+            alert("Please sign in to follow users.");
+            return;
+        }
         if (!profileUser) return;
         try {
             const result = await followUser(profileUser.uid);
