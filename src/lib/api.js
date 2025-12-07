@@ -1,7 +1,7 @@
 // API Client to replace Firestore
 // This file keeps the same function signatures so we don't have to rewrite all components
 
-const API_URL = "http://127.0.0.1:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:3000/api";
 
 function getHeaders() {
     const token = localStorage.getItem('token');
