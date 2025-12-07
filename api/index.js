@@ -826,8 +826,8 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 
         res.json(result.rows[0]);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Database error' });
+        console.error('Send Message Error:', err);
+        res.status(500).json({ error: 'Database error', details: err.message });
     }
 });
 

@@ -206,7 +206,11 @@ export async function sendMessage(messageData) {
         headers: getHeaders(),
         body: JSON.stringify(messageData)
     });
-    if (!response.ok) throw new Error("Failed to send message");
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Send message failed:", errorData);
+        throw new Error(errorData.details || "Failed to send message");
+    }
     return await response.json();
 }
 
