@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Menu, X, Bell, MessageSquare } from "lucide-react";
+import { Menu, X, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getNotifications, markNotificationRead, getUserProfile, getRequest, getUnreadMessageCount } from "../lib/api";
+import { getNotifications, markNotificationRead, getUserProfile, getRequest } from "../lib/api";
 import { useChat } from "../context/ChatContext";
 
 export default function Navbar() {
@@ -12,33 +12,17 @@ export default function Navbar() {
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
     useEffect(() => {
         if (currentUser) {
             fetchNotifications();
-            fetchUnreadMessages();
             // Poll for notifications every 2 seconds
             const interval = setInterval(() => {
                 fetchNotifications();
-                fetchUnreadMessages();
             }, 2000);
             return () => clearInterval(interval);
         }
     }, [currentUser]);
-
-    async function fetchUnreadMessages() {
-        try {
-            const data = await getUnreadMessageCount();
-            setUnreadMessageCount(data.count);
-        } catch (error) {
-            console.error("Failed to fetch unread messages", error);
-            if (error.message && error.message.includes('403')) {
-                logout();
-                window.location.href = '/blacklisted';
-            }
-        }
-    }
 
     async function fetchNotifications() {
         try {
@@ -131,14 +115,6 @@ export default function Navbar() {
                             <div className="flex items-center space-x-4">
                                 <Link to="/create-listing" className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors">
                                     Post Service
-                                </Link>
-
-                                {/* Chat Icon */}
-                                <Link to="/messages" className="relative p-1 rounded-full text-slate-400 hover:text-slate-500 focus:outline-none">
-                                    <MessageSquare className="h-6 w-6" />
-                                    {unreadMessageCount > 0 && (
-                                        <span className="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500" />
-                                    )}
                                 </Link>
 
                                 {/* Notification Bell */}

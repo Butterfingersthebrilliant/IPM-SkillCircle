@@ -183,6 +183,13 @@ async function initDb() {
             is_read BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS follows (
+            follower_uid VARCHAR(255) REFERENCES users(uid),
+            following_uid VARCHAR(255) REFERENCES users(uid),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (follower_uid, following_uid)
+        );
         `);
 
             // Migration: Change related_id to VARCHAR if it is INTEGER
@@ -459,9 +466,19 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 // Sync User (Legacy/Internal use) - Modified to be protected or just keep for compatibility if needed
 // We might not need this anymore if we use /api/auth/signup, but let's keep it for now or deprecate it.
 // Update User Profile
-app.patch('/api/users/me', authenticateToken, async (req, res) => {
+// Update User Profile
+app.patch('/api/users/:uid', authenticateToken, async (req, res) => {
     const { bio, expertise, learningGoals, qualifications, batch, displayName, photoURL } = req.body;
-    const uid = req.user.uid;
+    const uid = req.params.uid;
+
+    console.log(`[PROFILE UPDATE] Request for UID: ${uid}`);
+    console.log(`[PROFILE UPDATE] Authenticated User:`, req.user);
+
+    // Authorization check
+    if (req.user.uid !== uid && req.user.role !== 'admin') {
+        console.warn(`[PROFILE UPDATE] Unauthorized access attempt. User ${req.user.uid} tried to update ${uid}`);
+        return res.status(403).json({ error: 'Unauthorized' });
+    }
 
     try {
         const result = await pool.query(
@@ -478,6 +495,160 @@ app.patch('/api/users/me', authenticateToken, async (req, res) => {
             [bio, expertise, learningGoals, qualifications, batch, displayName, photoURL, uid]
         );
         res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// --- Follow Feature ---
+
+// Toggle Follow
+app.post('/api/users/:uid/follow', authenticateToken, async (req, res) => {
+    const followerUid = req.user.uid;
+    const followingUid = req.params.uid;
+
+    if (followerUid === followingUid) {
+        return res.status(400).json({ error: 'Cannot follow yourself' });
+    }
+
+    try {
+        // Check if already following
+        const check = await pool.query(
+            'SELECT * FROM follows WHERE follower_uid = $1 AND following_uid = $2',
+            [followerUid, followingUid]
+        );
+
+        if (check.rows.length > 0) {
+            // Unfollow
+            await pool.query(
+                'DELETE FROM follows WHERE follower_uid = $1 AND following_uid = $2',
+                [followerUid, followingUid]
+            );
+            res.json({ following: false });
+        } else {
+            // Follow
+            await pool.query(
+                'INSERT INTO follows (follower_uid, following_uid) VALUES ($1, $2)',
+                [followerUid, followingUid]
+            );
+
+            // Create notification for the user being followed
+            const follower = await pool.query('SELECT display_name FROM users WHERE uid = $1', [followerUid]);
+            const followerName = follower.rows[0]?.display_name || 'Someone';
+
+            await pool.query(
+                `INSERT INTO notifications (recipient_uid, message, related_id, type)
+                 VALUES ($1, $2, $3, 'new_follower')`,
+                [followingUid, `${followerName} started following you`, followerUid]
+            );
+
+            res.json({ following: true });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Check Follow Status
+app.get('/api/users/:uid/is-following', authenticateToken, async (req, res) => {
+    const followerUid = req.user.uid;
+    const followingUid = req.params.uid;
+
+    try {
+        const result = await pool.query(
+            'SELECT * FROM follows WHERE follower_uid = $1 AND following_uid = $2',
+            [followerUid, followingUid]
+        );
+
+        // Get follower count
+        const countResult = await pool.query(
+            'SELECT COUNT(*) FROM follows WHERE following_uid = $1',
+            [followingUid]
+        );
+
+        res.json({
+            following: result.rows.length > 0,
+            followerCount: parseInt(countResult.rows[0].count)
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// --- Follow Feature ---
+
+// Toggle Follow
+app.post('/api/users/:uid/follow', authenticateToken, async (req, res) => {
+    const followerUid = req.user.uid;
+    const followingUid = req.params.uid;
+
+    if (followerUid === followingUid) {
+        return res.status(400).json({ error: 'Cannot follow yourself' });
+    }
+
+    try {
+        // Check if already following
+        const check = await pool.query(
+            'SELECT * FROM follows WHERE follower_uid = $1 AND following_uid = $2',
+            [followerUid, followingUid]
+        );
+
+        if (check.rows.length > 0) {
+            // Unfollow
+            await pool.query(
+                'DELETE FROM follows WHERE follower_uid = $1 AND following_uid = $2',
+                [followerUid, followingUid]
+            );
+            res.json({ following: false });
+        } else {
+            // Follow
+            await pool.query(
+                'INSERT INTO follows (follower_uid, following_uid) VALUES ($1, $2)',
+                [followerUid, followingUid]
+            );
+
+            // Create notification for the user being followed
+            const follower = await pool.query('SELECT display_name FROM users WHERE uid = $1', [followerUid]);
+            const followerName = follower.rows[0]?.display_name || 'Someone';
+
+            await pool.query(
+                `INSERT INTO notifications (recipient_uid, message, related_id, type)
+                 VALUES ($1, $2, $3, 'new_follower')`,
+                [followingUid, `${followerName} started following you`, followerUid]
+            );
+
+            res.json({ following: true });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Check Follow Status
+app.get('/api/users/:uid/is-following', authenticateToken, async (req, res) => {
+    const followerUid = req.user.uid;
+    const followingUid = req.params.uid;
+
+    try {
+        const result = await pool.query(
+            'SELECT * FROM follows WHERE follower_uid = $1 AND following_uid = $2',
+            [followerUid, followingUid]
+        );
+
+        // Get follower count
+        const countResult = await pool.query(
+            'SELECT COUNT(*) FROM follows WHERE following_uid = $1',
+            [followingUid]
+        );
+
+        res.json({
+            following: result.rows.length > 0,
+            followerCount: parseInt(countResult.rows[0].count)
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Database error' });
@@ -554,7 +725,21 @@ app.post('/api/services', authenticateToken, async (req, res) => {
        RETURNING id`,
             [providerUid, providerName, providerPhoto, title, category, shortDescription, longDescription, deliveryMode, compensationType, price, tags, status]
         );
-        res.json({ id: result.rows[0].id });
+
+        const serviceId = result.rows[0].id;
+
+        // Notify Followers
+        const followers = await pool.query('SELECT follower_uid FROM follows WHERE following_uid = $1', [providerUid]);
+
+        for (const row of followers.rows) {
+            await pool.query(
+                `INSERT INTO notifications (recipient_uid, message, related_id, type)
+                 VALUES ($1, $2, $3, 'new_service')`,
+                [row.follower_uid, `${providerName} posted a new service: ${title}`, serviceId.toString()]
+            );
+        }
+
+        res.json({ id: serviceId });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Database error' });

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Plus, Edit2, Save, X, Camera } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { getServices, updateUserProfile, getUserProfile, uploadProfilePhoto } from "../lib/api";
+import { getServices, updateUserProfile, getUserProfile, uploadProfilePhoto, followUser, checkFollowStatus } from "../lib/api";
 import ServiceCard from "../components/ServiceCard";
 
 export default function Profile() {
@@ -14,6 +14,8 @@ export default function Profile() {
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followerCount, setFollowerCount] = useState(0);
 
     const isOwnProfile = !uid || (currentUser && currentUser.uid === uid);
 
@@ -77,6 +79,25 @@ export default function Profile() {
                         status: 'all'
                     });
                     setMyServices(services);
+
+                    // Check follow status if not own profile
+                    if (!isOwnProfile && currentUser) {
+                        try {
+                            const followData = await checkFollowStatus(userToLoad.uid);
+                            setIsFollowing(followData.following);
+                            setFollowerCount(followData.followerCount);
+                        } catch (err) {
+                            console.error("Failed to check follow status", err);
+                        }
+                    } else if (isOwnProfile) {
+                        // For own profile, just get count (optional, or reuse endpoint)
+                        try {
+                            const followData = await checkFollowStatus(userToLoad.uid);
+                            setFollowerCount(followData.followerCount);
+                        } catch (err) {
+                            console.error("Failed to check follower count", err);
+                        }
+                    }
                 }
             } catch (error) {
                 console.error("Failed to load profile", error);
@@ -150,6 +171,17 @@ export default function Profile() {
         }
     };
 
+    const handleFollow = async () => {
+        if (!profileUser) return;
+        try {
+            const result = await followUser(profileUser.uid);
+            setIsFollowing(result.following);
+            setFollowerCount(prev => result.following ? prev + 1 : prev - 1);
+        } catch (error) {
+            console.error("Failed to toggle follow", error);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Loading profile...</div>;
     if (!profileUser) return <div className="p-8 text-center">User not found.</div>;
 
@@ -174,33 +206,53 @@ export default function Profile() {
                             )}
                         </div>
                         <div className="mb-2">
-                            {isOwnProfile && (!isEditing ? (
-                                <button
-                                    onClick={() => setIsEditing(true)}
-                                    className="inline-flex items-center px-3 py-2 border border-slate-300 shadow-sm text-sm leading-4 font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none"
-                                >
-                                    <Edit2 className="h-4 w-4 mr-2" />
-                                    Edit Profile
-                                </button>
+                            {isOwnProfile ? (
+                                !isEditing ? (
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="inline-flex items-center px-3 py-2 border border-slate-300 shadow-sm text-sm leading-4 font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none"
+                                    >
+                                        <Edit2 className="h-4 w-4 mr-2" />
+                                        Edit Profile
+                                    </button>
+                                ) : (
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={() => setIsEditing(false)}
+                                            className="inline-flex items-center px-3 py-2 border border-slate-300 shadow-sm text-sm leading-4 font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
+                                        >
+                                            <X className="h-4 w-4 mr-2" />
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={saving}
+                                            className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                                        >
+                                            <Save className="h-4 w-4 mr-2" />
+                                            {saving ? "Saving..." : "Save Changes"}
+                                        </button>
+                                    </div>
+                                )
                             ) : (
                                 <div className="flex space-x-2">
                                     <button
-                                        onClick={() => setIsEditing(false)}
-                                        className="inline-flex items-center px-3 py-2 border border-slate-300 shadow-sm text-sm leading-4 font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50"
+                                        onClick={handleFollow}
+                                        className={`inline-flex items-center px-3 py-2 border shadow-sm text-sm leading-4 font-medium rounded-md focus:outline-none ${isFollowing
+                                            ? 'border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
+                                            : 'border-transparent text-white bg-indigo-600 hover:bg-indigo-700'
+                                            }`}
                                     >
-                                        <X className="h-4 w-4 mr-2" />
-                                        Cancel
+                                        {isFollowing ? 'Unfollow' : 'Follow'}
                                     </button>
-                                    <button
-                                        onClick={handleSave}
-                                        disabled={saving}
-                                        className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                                    <Link
+                                        to={`/messages/${profileUser.uid}`}
+                                        className="inline-flex items-center px-3 py-2 border border-slate-300 shadow-sm text-sm leading-4 font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none"
                                     >
-                                        <Save className="h-4 w-4 mr-2" />
-                                        {saving ? "Saving..." : "Save Changes"}
-                                    </button>
+                                        Message
+                                    </Link>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
@@ -269,7 +321,11 @@ export default function Profile() {
                         ) : (
                             <div>
                                 <h1 className="text-2xl font-bold text-slate-900">{profileUser.displayName}</h1>
-                                <p className="text-sm text-slate-500 mb-2">{profileUser.email}</p>
+                                <div className="flex items-center space-x-4 mb-2">
+                                    <p className="text-sm text-slate-500">{profileUser.email}</p>
+                                    <span className="text-sm text-slate-500">•</span>
+                                    <p className="text-sm font-medium text-slate-700">{followerCount} {followerCount === 1 ? 'follower' : 'followers'}</p>
+                                </div>
                                 {profileUser.batch && (
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 mb-4">
                                         {profileUser.batch}

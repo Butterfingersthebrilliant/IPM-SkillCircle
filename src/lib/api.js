@@ -64,7 +64,11 @@ export async function updateUserProfile(uid, data) {
         headers: getHeaders(),
         body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error("Failed to update profile");
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Update profile failed:", response.status, errorText);
+        throw new Error(`Failed to update profile: ${response.status} ${errorText}`);
+    }
     return await response.json();
 }
 
@@ -253,5 +257,24 @@ export async function markMessagesRead(otherUid) {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error("Failed to mark messages as read");
+    return await response.json();
+}
+
+// --- Follow Feature ---
+
+export async function followUser(uid) {
+    const response = await fetchWithAuth(`${API_URL}/users/${uid}/follow`, {
+        method: "POST",
+        headers: getHeaders()
+    });
+    if (!response.ok) throw new Error("Failed to toggle follow status");
+    return await response.json();
+}
+
+export async function checkFollowStatus(uid) {
+    const response = await fetchWithAuth(`${API_URL}/users/${uid}/is-following`, {
+        headers: getHeaders()
+    });
+    if (!response.ok) throw new Error("Failed to check follow status");
     return await response.json();
 }
