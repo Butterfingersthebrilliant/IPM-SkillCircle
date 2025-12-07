@@ -178,7 +178,7 @@ export async function getNotifications() {
     const response = await fetch(`${API_URL}/notifications`, {
         headers: getHeaders()
     });
-    if (!response.ok) throw new Error("Failed to fetch notifications");
+    if (!response.ok) throw new Error(`Failed to fetch notifications: ${response.status}`);
     return await response.json();
 }
 
@@ -226,7 +226,7 @@ export async function getUnreadMessageCount() {
     const response = await fetch(`${API_URL}/messages/unread-count`, {
         headers: getHeaders()
     });
-    if (!response.ok) throw new Error("Failed to fetch unread count");
+    if (!response.ok) throw new Error(`Failed to fetch unread count: ${response.status}`);
     return await response.json();
 }
 

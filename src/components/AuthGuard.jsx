@@ -14,5 +14,9 @@ export default function AuthGuard({ children }) {
         return <Navigate to="/" state={{ from: location }} replace />;
     }
 
+    if (currentUser.is_blacklisted) {
+        return <Navigate to="/blacklisted" replace />;
+    }
+
     return children;
 }

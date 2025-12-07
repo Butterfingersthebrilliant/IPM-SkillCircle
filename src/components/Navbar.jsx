@@ -33,6 +33,10 @@ export default function Navbar() {
             setUnreadMessageCount(data.count);
         } catch (error) {
             console.error("Failed to fetch unread messages", error);
+            if (error.message && error.message.includes('403')) {
+                logout();
+                window.location.href = '/blacklisted';
+            }
         }
     }
 
@@ -43,6 +47,11 @@ export default function Navbar() {
             setUnreadCount(data.filter(n => !n.is_read).length);
         } catch (error) {
             console.error("Failed to fetch notifications", error);
+            // Check if error is 403 (Forbidden) - likely blacklisted
+            if (error.message && error.message.includes('403')) {
+                logout();
+                window.location.href = '/blacklisted';
+            }
         }
     }
 

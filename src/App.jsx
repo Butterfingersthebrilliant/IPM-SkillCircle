@@ -18,6 +18,7 @@ import CompleteProfile from "./pages/CompleteProfile";
 import Landing from "./pages/Landing";
 import Messages from "./pages/Messages";
 import ChatList from "./pages/ChatList";
+import Blacklisted from "./pages/Blacklisted";
 
 function App() {
   return (
@@ -99,6 +100,7 @@ function App() {
                 </AuthGuard>
               }
             />
+            <Route path="blacklisted" element={<Blacklisted />} />
           </Route>
         </Routes>
       </ChatProvider>

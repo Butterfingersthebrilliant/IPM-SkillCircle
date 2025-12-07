@@ -226,10 +226,21 @@ const authenticateToken = (req, res, next) => {
 
     if (!token) return res.sendStatus(401);
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
+    jwt.verify(token, JWT_SECRET, async (err, user) => {
         if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
+
+        // Check if user is blacklisted
+        try {
+            const result = await pool.query('SELECT is_blacklisted FROM users WHERE uid = $1', [user.uid]);
+            if (result.rows.length > 0 && result.rows[0].is_blacklisted) {
+                return res.status(403).json({ error: 'Account suspended' });
+            }
+            req.user = user;
+            next();
+        } catch (dbErr) {
+            console.error('Auth Middleware DB Error:', dbErr);
+            res.sendStatus(500);
+        }
     });
 };
 
