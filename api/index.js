@@ -20,6 +20,10 @@ const pool = new Pool({
     }
 });
 
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
@@ -377,8 +381,8 @@ app.post('/api/auth/login', async (req, res) => {
 
         res.json({ user, token });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Database error' });
+        console.error('Login Error:', err);
+        res.status(500).json({ error: 'Database error', details: err.message });
     }
 });
 
