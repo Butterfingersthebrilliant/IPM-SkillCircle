@@ -13,6 +13,13 @@ import { fileURLToPath } from 'url';
 dotenv.config();
 
 const { Pool } = pg;
+
+if (!process.env.DATABASE_URL) {
+    console.error('DATABASE_URL environment variable is missing!');
+    // Don't crash immediately, but subsequent queries will fail. 
+    // This allows the logs to be flushed.
+}
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
