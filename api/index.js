@@ -715,10 +715,16 @@ app.get('/api/services', async (req, res) => {
 
 // Create Service - Protected
 app.post('/api/services', authenticateToken, async (req, res) => {
-    const { providerName, providerPhoto, title, category, shortDescription, longDescription, deliveryMode, compensationType, price, tags, status } = req.body;
+    const { title, category, shortDescription, longDescription, deliveryMode, compensationType, price, tags, status } = req.body;
     const providerUid = req.user.uid; // Use UID from token
 
     try {
+        // Fetch user details from DB to ensure accuracy
+        const userResult = await pool.query('SELECT display_name, photo_url FROM users WHERE uid = $1', [providerUid]);
+        const user = userResult.rows[0];
+        const providerName = user?.display_name || 'Anonymous';
+        const providerPhoto = user?.photo_url;
+
         const result = await pool.query(
             `INSERT INTO services (provider_uid, provider_name, provider_photo, title, category, short_description, long_description, delivery_mode, compensation_type, price, tags, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
