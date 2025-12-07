@@ -14,7 +14,10 @@ dotenv.config();
 
 const { Pool } = pg;
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
