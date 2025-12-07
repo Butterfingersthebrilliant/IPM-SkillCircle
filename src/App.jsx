@@ -17,6 +17,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import CompleteProfile from "./pages/CompleteProfile";
 import Landing from "./pages/Landing";
 import Messages from "./pages/Messages";
+import ChatList from "./pages/ChatList";
 
 function App() {
   return (
@@ -79,6 +80,14 @@ function App() {
               element={
                 <AuthGuard>
                   <Messages />
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="messages"
+              element={
+                <AuthGuard>
+                  <ChatList />
                 </AuthGuard>
               }
             />

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, Smile } from 'lucide-react';
-import { getMessages, sendMessage } from '../lib/api';
+import { getMessages, sendMessage, markMessagesRead } from '../lib/api';
 
 export default function ChatBox({ currentUser, otherUser, isWidget = false }) {
     const [messages, setMessages] = useState([]);
@@ -20,6 +20,9 @@ export default function ChatBox({ currentUser, otherUser, isWidget = false }) {
                 setMessages(data);
                 setLoading(false);
                 scrollToBottom();
+
+                // Mark as read
+                await markMessagesRead(otherUser.uid);
             } catch (error) {
                 console.error("Failed to fetch messages", error);
             }

@@ -851,6 +851,79 @@ app.get('/api/messages/:otherUid', authenticateToken, async (req, res) => {
     }
 });
 
+// Get Conversations List
+app.get('/api/messages/conversations', authenticateToken, async (req, res) => {
+    const currentUid = req.user.uid;
+    try {
+        // Complex query to get the last message for each conversation
+        const result = await pool.query(`
+            SELECT DISTINCT ON (
+                CASE WHEN sender_uid = $1 THEN recipient_uid ELSE sender_uid END
+            )
+                CASE WHEN sender_uid = $1 THEN recipient_uid ELSE sender_uid END as other_uid,
+                content,
+                created_at,
+                is_read,
+                sender_uid
+            FROM messages
+            WHERE sender_uid = $1 OR recipient_uid = $1
+            ORDER BY 
+                CASE WHEN sender_uid = $1 THEN recipient_uid ELSE sender_uid END,
+                created_at DESC
+        `, [currentUid]);
+
+        // Sort by most recent message
+        const conversations = result.rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        // Fetch user details for each conversation
+        const conversationsWithUsers = await Promise.all(conversations.map(async (conv) => {
+            const userRes = await pool.query('SELECT display_name, photo_url FROM users WHERE uid = $1', [conv.other_uid]);
+            const user = userRes.rows[0] || { display_name: 'Unknown User', photo_url: null };
+            return {
+                ...conv,
+                otherName: user.display_name,
+                otherPhoto: user.photo_url
+            };
+        }));
+
+        res.json(conversationsWithUsers);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Get Unread Message Count
+app.get('/api/messages/unread-count', authenticateToken, async (req, res) => {
+    const currentUid = req.user.uid;
+    try {
+        const result = await pool.query(
+            'SELECT COUNT(*) FROM messages WHERE recipient_uid = $1 AND is_read = FALSE',
+            [currentUid]
+        );
+        res.json({ count: parseInt(result.rows[0].count) });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Mark Messages as Read
+app.patch('/api/messages/:otherUid/read', authenticateToken, async (req, res) => {
+    const { otherUid } = req.params;
+    const currentUid = req.user.uid;
+    try {
+        await pool.query(
+            'UPDATE messages SET is_read = TRUE WHERE sender_uid = $1 AND recipient_uid = $2',
+            [otherUid, currentUid]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 if (process.env.NODE_ENV !== 'production') {
     app.listen(port, '0.0.0.0', () => {
         console.log(`Server running on port ${port}`);

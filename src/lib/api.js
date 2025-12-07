@@ -209,3 +209,28 @@ export async function sendMessage(messageData) {
     if (!response.ok) throw new Error("Failed to send message");
     return await response.json();
 }
+
+export async function getConversations() {
+    const response = await fetch(`${API_URL}/messages/conversations`, {
+        headers: getHeaders()
+    });
+    if (!response.ok) throw new Error("Failed to fetch conversations");
+    return await response.json();
+}
+
+export async function getUnreadMessageCount() {
+    const response = await fetch(`${API_URL}/messages/unread-count`, {
+        headers: getHeaders()
+    });
+    if (!response.ok) throw new Error("Failed to fetch unread count");
+    return await response.json();
+}
+
+export async function markMessagesRead(otherUid) {
+    const response = await fetch(`${API_URL}/messages/${otherUid}/read`, {
+        method: "PATCH",
+        headers: getHeaders()
+    });
+    if (!response.ok) throw new Error("Failed to mark messages as read");
+    return await response.json();
+}
