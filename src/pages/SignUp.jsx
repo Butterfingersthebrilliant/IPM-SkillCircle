@@ -112,10 +112,14 @@ export default function SignUp() {
 
                                 <div>
                                     <div className="flex justify-center mb-6">
-                                        <ReCAPTCHA
-                                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-                                            onChange={setCaptchaValue}
-                                        />
+                                        {import.meta.env.VITE_RECAPTCHA_SITE_KEY ? (
+                                            <ReCAPTCHA
+                                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                                onChange={setCaptchaValue}
+                                            />
+                                        ) : (
+                                            <p className="text-red-500 text-xs">Error: VITE_RECAPTCHA_SITE_KEY is missing</p>
+                                        )}
                                     </div>
                                     <button
                                         type="submit"
