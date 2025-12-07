@@ -16,13 +16,19 @@ export default function ChatBox({ currentUser, otherUser, isWidget = false }) {
         let interval;
         async function fetchMessages() {
             try {
+                console.log(`[ChatBox] Fetching messages with ${otherUser.uid}`);
                 const data = await getMessages(otherUser.uid);
                 setMessages(data);
                 setLoading(false);
-                scrollToBottom();
 
-                // Mark as read
-                await markMessagesRead(otherUser.uid);
+                // Only mark as read if there are unread messages from the other user
+                const hasUnread = data.some(m => !m.is_read && m.sender_uid === otherUser.uid);
+                if (hasUnread) {
+                    console.log('[ChatBox] Marking messages as read...');
+                    await markMessagesRead(otherUser.uid);
+                }
+
+                scrollToBottom();
             } catch (error) {
                 console.error("Failed to fetch messages", error);
             }
