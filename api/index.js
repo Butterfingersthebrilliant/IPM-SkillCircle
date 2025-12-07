@@ -16,8 +16,8 @@ const { Pool } = pg;
 
 if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL environment variable is missing!');
-    // Don't crash immediately, but subsequent queries will fail. 
-    // This allows the logs to be flushed.
+} else {
+    console.log('DATABASE_URL is set. Starts with:', process.env.DATABASE_URL.substring(0, 20) + '...');
 }
 
 const pool = new Pool({
