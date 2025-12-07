@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import ReCAPTCHA from "react-google-recaptcha";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export default function SignUp() {
@@ -9,6 +11,7 @@ export default function SignUp() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
+    const [captchaValue, setCaptchaValue] = useState(null);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,6 +20,11 @@ export default function SignUp() {
 
         if (!email.endsWith("@iimidr.ac.in")) {
             setError("Email must be an @iimidr.ac.in address.");
+            return;
+        }
+
+        if (!captchaValue) {
+            setError("Please complete the CAPTCHA.");
             return;
         }
 
@@ -103,6 +111,12 @@ export default function SignUp() {
                                 </div>
 
                                 <div>
+                                    <div className="flex justify-center mb-6">
+                                        <ReCAPTCHA
+                                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                            onChange={setCaptchaValue}
+                                        />
+                                    </div>
                                     <button
                                         type="submit"
                                         disabled={loading}

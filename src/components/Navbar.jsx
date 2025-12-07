@@ -18,11 +18,11 @@ export default function Navbar() {
         if (currentUser) {
             fetchNotifications();
             fetchUnreadMessages();
-            // Poll for notifications every 5 seconds
+            // Poll for notifications every 2 seconds
             const interval = setInterval(() => {
                 fetchNotifications();
                 fetchUnreadMessages();
-            }, 5000);
+            }, 2000);
             return () => clearInterval(interval);
         }
     }, [currentUser]);

@@ -30,7 +30,7 @@ export default function Login() {
 
         setLoading(true);
         try {
-            await login(formData.email, formData.password);
+            await login(formData.email, formData.password, captchaValue);
             navigate("/dashboard");
         } catch (err) {
             setError("Failed to sign in. Please check your credentials.");
@@ -117,7 +117,7 @@ export default function Login() {
 
                         <div className="flex justify-center">
                             <ReCAPTCHA
-                                sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" // Test key
+                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
                                 onChange={setCaptchaValue}
                             />
                         </div>

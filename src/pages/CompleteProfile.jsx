@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+import ReCAPTCHA from "react-google-recaptcha";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export default function CompleteProfile() {
@@ -19,6 +21,7 @@ export default function CompleteProfile() {
     });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [captchaValue, setCaptchaValue] = useState(null);
 
     if (!email || !token) {
         return <div className="p-8 text-center text-red-600">Invalid session. Please verify your email again.</div>;
@@ -47,6 +50,11 @@ export default function CompleteProfile() {
             return;
         }
 
+        if (!captchaValue) {
+            setError("Please complete the CAPTCHA.");
+            return;
+        }
+
         setLoading(true);
         try {
             const response = await fetch(`${API_URL}/auth/complete-signup`, {
@@ -56,7 +64,8 @@ export default function CompleteProfile() {
                     email,
                     token,
                     username: formData.username,
-                    password: formData.password
+                    password: formData.password,
+                    captchaToken: captchaValue
                 })
             });
 
@@ -151,6 +160,12 @@ export default function CompleteProfile() {
                         </div>
 
                         <div>
+                            <div className="flex justify-center mb-6">
+                                <ReCAPTCHA
+                                    sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                                    onChange={setCaptchaValue}
+                                />
+                            </div>
                             <button
                                 type="submit"
                                 disabled={loading}

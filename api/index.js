@@ -326,16 +326,28 @@ app.post('/api/auth/verify-token', async (req, res) => {
     }
 });
 
+
 // Auth: Complete Signup
 app.post('/api/auth/complete-signup', async (req, res) => {
-    const { email, token, username, password } = req.body;
+    const { email, token, username, password, captchaToken } = req.body;
 
     if (!email || !token || !username || !password) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
 
     try {
-        // Verify token again
+        // Verify Captcha
+        if (process.env.RECAPTCHA_SECRET_KEY) {
+            const captchaVerifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${captchaToken}`;
+            const captchaResponse = await fetch(captchaVerifyUrl, { method: 'POST' });
+            const captchaData = await captchaResponse.json();
+
+            if (!captchaData.success) {
+                return res.status(400).json({ error: 'Captcha verification failed' });
+            }
+        }
+
+        // Verify token
         if (token !== 'bypass-token') {
             const tokenCheck = await pool.query(
                 'SELECT * FROM verification_tokens WHERE email = $1 AND token = $2 AND expires_at > NOW()',
@@ -382,9 +394,20 @@ app.post('/api/auth/complete-signup', async (req, res) => {
 
 // Auth: Login
 app.post('/api/auth/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, captchaToken } = req.body;
 
     try {
+        // Verify Captcha
+        if (process.env.RECAPTCHA_SECRET_KEY) {
+            const captchaVerifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${captchaToken}`;
+            const captchaResponse = await fetch(captchaVerifyUrl, { method: 'POST' });
+            const captchaData = await captchaResponse.json();
+
+            if (!captchaData.success) {
+                return res.status(400).json({ error: 'Captcha verification failed' });
+            }
+        }
+
         const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (result.rows.length === 0) {
             return res.status(400).json({ error: 'Invalid credentials' });
