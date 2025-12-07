@@ -11,13 +11,30 @@ function getHeaders() {
     };
 }
 
+async function fetchWithAuth(url, options = {}) {
+    const response = await fetch(url, options);
+
+    if (response.status === 403) {
+        // Check if it's a blacklist/suspension error OR just a generic forbidden (invalid token)
+        const data = await response.clone().json().catch(() => ({}));
+
+        // If it's explicitly suspended OR if we just got a 403 (likely token issue or ban)
+        // We should force logout to be safe.
+        localStorage.removeItem('token');
+        window.location.href = '/blacklisted';
+        throw new Error('Account suspended or Forbidden');
+    }
+
+    return response;
+}
+
 // --- Users ---
 
 export async function syncUser(user) {
     if (!user) return;
 
     try {
-        const response = await fetch(`${API_URL}/users/sync`, {
+        const response = await fetchWithAuth(`${API_URL}/users/sync`, {
             method: "POST",
             headers: getHeaders(),
             body: JSON.stringify({
@@ -34,7 +51,7 @@ export async function syncUser(user) {
 }
 
 export async function getUserProfile(uid) {
-    const response = await fetch(`${API_URL}/users/${uid}`, {
+    const response = await fetchWithAuth(`${API_URL}/users/${uid}`, {
         headers: getHeaders()
     });
     if (!response.ok) return null;
@@ -42,7 +59,7 @@ export async function getUserProfile(uid) {
 }
 
 export async function updateUserProfile(uid, data) {
-    const response = await fetch(`${API_URL}/users/${uid}`, {
+    const response = await fetchWithAuth(`${API_URL}/users/${uid}`, {
         method: "PATCH",
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -57,7 +74,7 @@ export async function uploadProfilePhoto(uid, file) {
 
     const token = localStorage.getItem('token');
 
-    const response = await fetch(`${API_URL}/users/${uid}/photo`, {
+    const response = await fetchWithAuth(`${API_URL}/users/${uid}/photo`, {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`
@@ -70,7 +87,7 @@ export async function uploadProfilePhoto(uid, file) {
 }
 
 export async function getUsers() {
-    const response = await fetch(`${API_URL}/users`, {
+    const response = await fetchWithAuth(`${API_URL}/users`, {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error("Failed to fetch users");
@@ -78,7 +95,7 @@ export async function getUsers() {
 }
 
 export async function toggleUserBlacklist(uid, isBlacklisted) {
-    const response = await fetch(`${API_URL}/users/${uid}/blacklist`, {
+    const response = await fetchWithAuth(`${API_URL}/users/${uid}/blacklist`, {
         method: "PATCH",
         headers: getHeaders(),
         body: JSON.stringify({ isBlacklisted })
@@ -90,7 +107,7 @@ export async function toggleUserBlacklist(uid, isBlacklisted) {
 // --- Services ---
 
 export async function createService(serviceData) {
-    const response = await fetch(`${API_URL}/services`, {
+    const response = await fetchWithAuth(`${API_URL}/services`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(serviceData)
@@ -114,13 +131,13 @@ export async function getServices(filters = {}) {
         params.append("status", filters.status);
     }
 
-    const response = await fetch(`${API_URL}/services?${params.toString()}`);
+    const response = await fetchWithAuth(`${API_URL}/services?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch services");
     return await response.json();
 }
 
 export async function getService(id) {
-    const response = await fetch(`${API_URL}/services/${id}`);
+    const response = await fetchWithAuth(`${API_URL}/services/${id}`);
     if (!response.ok) return null;
     return await response.json();
 }
@@ -130,7 +147,7 @@ export async function updateService(id, data) {
 }
 
 export async function deleteService(id) {
-    const response = await fetch(`${API_URL}/services/${id}`, {
+    const response = await fetchWithAuth(`${API_URL}/services/${id}`, {
         method: "DELETE",
         headers: getHeaders()
     });
@@ -139,13 +156,13 @@ export async function deleteService(id) {
 }
 
 export async function getPendingServices() {
-    const response = await fetch(`${API_URL}/services?status=pending`);
+    const response = await fetchWithAuth(`${API_URL}/services?status=pending`);
     if (!response.ok) throw new Error("Failed to fetch pending services");
     return await response.json();
 }
 
 export async function updateServiceStatus(id, status, reason = "") {
-    const response = await fetch(`${API_URL}/services/${id}/status`, {
+    const response = await fetchWithAuth(`${API_URL}/services/${id}/status`, {
         method: "PATCH",
         headers: getHeaders(),
         body: JSON.stringify({ status, reason })
@@ -156,7 +173,7 @@ export async function updateServiceStatus(id, status, reason = "") {
 // --- Requests ---
 
 export async function createRequest(requestData) {
-    const response = await fetch(`${API_URL}/requests`, {
+    const response = await fetchWithAuth(`${API_URL}/requests`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(requestData)
@@ -165,7 +182,7 @@ export async function createRequest(requestData) {
 }
 
 export async function getRequest(id) {
-    const response = await fetch(`${API_URL}/requests/${id}`, {
+    const response = await fetchWithAuth(`${API_URL}/requests/${id}`, {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error("Failed to fetch request");
@@ -175,7 +192,7 @@ export async function getRequest(id) {
 // --- Notifications ---
 
 export async function getNotifications() {
-    const response = await fetch(`${API_URL}/notifications`, {
+    const response = await fetchWithAuth(`${API_URL}/notifications`, {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error(`Failed to fetch notifications: ${response.status}`);
@@ -183,7 +200,7 @@ export async function getNotifications() {
 }
 
 export async function markNotificationRead(id) {
-    const response = await fetch(`${API_URL}/notifications/${id}/read`, {
+    const response = await fetchWithAuth(`${API_URL}/notifications/${id}/read`, {
         method: "PATCH",
         headers: getHeaders()
     });
@@ -193,7 +210,7 @@ export async function markNotificationRead(id) {
 // --- Messaging ---
 
 export async function getMessages(otherUid) {
-    const response = await fetch(`${API_URL}/messages/${otherUid}`, {
+    const response = await fetchWithAuth(`${API_URL}/messages/${otherUid}`, {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error("Failed to fetch messages");
@@ -201,7 +218,7 @@ export async function getMessages(otherUid) {
 }
 
 export async function sendMessage(messageData) {
-    const response = await fetch(`${API_URL}/messages`, {
+    const response = await fetchWithAuth(`${API_URL}/messages`, {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify(messageData)
@@ -215,7 +232,7 @@ export async function sendMessage(messageData) {
 }
 
 export async function getConversations() {
-    const response = await fetch(`${API_URL}/messages/conversations`, {
+    const response = await fetchWithAuth(`${API_URL}/messages/conversations`, {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error("Failed to fetch conversations");
@@ -223,7 +240,7 @@ export async function getConversations() {
 }
 
 export async function getUnreadMessageCount() {
-    const response = await fetch(`${API_URL}/messages/unread-count`, {
+    const response = await fetchWithAuth(`${API_URL}/messages/unread-count`, {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error(`Failed to fetch unread count: ${response.status}`);
@@ -231,7 +248,7 @@ export async function getUnreadMessageCount() {
 }
 
 export async function markMessagesRead(otherUid) {
-    const response = await fetch(`${API_URL}/messages/${otherUid}/read`, {
+    const response = await fetchWithAuth(`${API_URL}/messages/${otherUid}/read`, {
         method: "PATCH",
         headers: getHeaders()
     });

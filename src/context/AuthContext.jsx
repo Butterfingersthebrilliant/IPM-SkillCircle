@@ -78,6 +78,16 @@ export function AuthProvider({ children }) {
                     const user = await response.json();
                     setCurrentUser(user);
                 } else {
+                    // Check for blacklist
+                    if (response.status === 403) {
+                        const data = await response.json().catch(() => ({}));
+                        if (data.error === 'Account suspended') {
+                            localStorage.removeItem('token');
+                            setCurrentUser(null);
+                            window.location.href = '/blacklisted';
+                            return;
+                        }
+                    }
                     localStorage.removeItem('token');
                     setCurrentUser(null);
                 }
