@@ -1164,7 +1164,8 @@ app.patch('/api/messages/:otherUid/read', authenticateToken, async (req, res) =>
     }
 });
 
-if (process.env.NODE_ENV !== 'production') {
+// Only listen if not running on Vercel (Vercel handles this automatically)
+if (!process.env.VERCEL) {
     app.listen(port, '0.0.0.0', () => {
         console.log(`Server running on port ${port}`);
     });
